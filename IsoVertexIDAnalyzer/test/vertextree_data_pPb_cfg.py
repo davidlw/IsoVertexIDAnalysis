@@ -5,7 +5,7 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 2000
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100000)
+    input = cms.untracked.int32(-1)
 )
 
 #Trigger Selection
@@ -45,11 +45,12 @@ process.eventFilter_HM = cms.Sequence(
 process.source = cms.Source("PoolSource",
                                 fileNames = cms.untracked.vstring(
 #'root://cmsxrootd.fnal.gov//store/hidata/PARun2016C/PAHighMultiplicity1/AOD/PromptReco-v1/000/286/471/00000/02778130-2ABD-E611-8640-02163E014467.root'
-'root://cms-xrd-global.cern.ch//store/data/Run2016G/ZeroBias/AOD/PromptReco-v1/000/280/330/00000/44EE54CF-8577-E611-BB1E-02163E0143EA.root'
+#'root://cms-xrd-global.cern.ch//store/data/Run2016G/ZeroBias/AOD/PromptReco-v1/000/280/330/00000/44EE54CF-8577-E611-BB1E-02163E0143EA.root'
+'file:/home/wl33/CMSSW_8_0_28/src/IsoVertexIDAnalysis/IsoVertexIDProducer/test/isovtxprod.root'
                 )
 #                                secondaryFileNames = cms.untracked.vstring('')
                             )
-process.load("FlowCorrAna.DiHadronCorrelationAnalyzer.vertex_cff")
+process.load("IsoVertexIDAnalysis.IsoVertexIDAnalyzer.vertextree_cff")
 
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True)
@@ -57,7 +58,11 @@ process.options = cms.untracked.PSet(
 
 # Additional output definition
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string('vertex.root')
+                                   fileName = cms.string('vertextree.root')
                                    )
 
-process.ana = cms.Path(process.eventFilter_HM * process.vertex_ana)
+process.vertextree_isolated_ana = process.vertextree_ana.clone()
+process.vertextree_isolated_ana.VertexCollection = cms.InputTag('isolatedOfflinePrimaryVertices')
+
+process.ana = cms.Path(process.eventFilter_HM * process.vertextree_ana)
+process.ana_iso = cms.Path(process.eventFilter_HM * process.vertextree_isolated_ana)

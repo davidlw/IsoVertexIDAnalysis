@@ -134,25 +134,27 @@ IsoVertexIDProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    edm::Handle< reco::VertexCollection > vertices;
    iEvent.getByToken(token_vertices, vertices);
    if(!vertices->size()) { std::cout<<"Invalid or empty vertex collection!"<<std::endl; return; }
-
+/*
    edm::Handle< reco::TrackCollection > tracks;
    iEvent.getByToken(token_tracks, tracks);
    if(!tracks->size()) { std::cout<<"Invalid or empty track collection!"<<std::endl; return; }
-
+*/
    for(unsigned int iv=0; iv<vertices->size(); ++iv)
    {
      const reco::Vertex & vtx = (*vertices)[iv];
+     if(vtx.isFake() || vtx.tracksSize()<2) continue;
 
      float fcont_sum = 0; 
      for(unsigned int jv=0; jv<vertices->size(); ++jv)
      {
        if(iv == jv) continue;
+
        const reco::Vertex & vtx2 = (*vertices)[jv];
+       if(vtx2.isFake() || vtx2.tracksSize()<2) continue;
 
        fcont_sum += fContamination(vtx2,vtx); 
-     }
-       
-    if(fcont_sum > fContaminationMin_) continue;
+     }       
+     if(fcont_sum > fContaminationMin_) continue;
 
      theVtxs.push_back( vtx );
    }
@@ -165,7 +167,7 @@ IsoVertexIDProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
               theVtxs.end(),
               std::back_inserter(*vertexCandidates) );
 
-   iEvent.put( std::move(vertexCandidates), std::string("isolatedOfflinePrimaryVertices") );
+   iEvent.put( std::move(vertexCandidates), std::string("") );
 
    theVtxs.clear();
 

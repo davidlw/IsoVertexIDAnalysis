@@ -68,8 +68,8 @@ class TTree;
 // constructor "usesResource("TFileService");"
 // This will improve performance in multithreaded jobs.
 
-#define NMAXVTX 500
-#define NMAXTRACKSVTX 2000
+#define NMAXVTX 200
+#define NMAXTRACKSVTX 800
 
 class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
    public:
@@ -111,6 +111,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       float trackZErrVtx[NMAXVTX][NMAXTRACKSVTX];
       bool  trackHPVtx[NMAXVTX][NMAXTRACKSVTX];
 
+      void resetArrays();
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
@@ -157,22 +158,29 @@ IsoVertexIDTreeAnalyzer::~IsoVertexIDTreeAnalyzer()
 void
 IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
+   resetArrays();
+
    using namespace edm;
 
    edm::Handle< reco::VertexCollection > vertices;
    iEvent.getByToken(token_vertices, vertices);
-   if(!vertices->size()) { std::cout<<"Invalid or empty vertex collection!"<<std::endl; return; }
+   if(!vertices->size()) { std::cout<<"Invalid or empty vertex collection!"<<std::endl; vertexTree->Fill(); return; }
 
+/*
    edm::Handle< reco::TrackCollection > tracks;
    iEvent.getByToken(token_tracks, tracks);
    if(!tracks->size()) { std::cout<<"Invalid or empty track collection!"<<std::endl; return; }
+*/
 
    runNb = iEvent.id().run();
    eventNb = iEvent.id().event();
    lsNb = iEvent.luminosityBlock();
 
    nVertices=0;
-   for(unsigned int iv=0; iv<vertices->size(); ++iv)
+
+//std::cout<<vertices->size()<<std::endl;
+
+   for(unsigned int iv=0; iv<vertices->size(); iv++)
    {
      const reco::Vertex & vtx = (*vertices)[iv];
 
@@ -188,7 +196,7 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
        ndofVtx[nVertices] = vtx.ndof();
 
        uint nTracksTmp=0;
-       for (reco::Vertex::trackRef_iterator iTrack = vtx.tracks_begin(); iTrack != vtx.tracks_end(); ++iTrack) {
+       for (reco::Vertex::trackRef_iterator iTrack = vtx.tracks_begin(); iTrack != vtx.tracks_end(); iTrack++) {
 
           reco::TrackRef track = iTrack->castTo<reco::TrackRef>();
 
@@ -201,7 +209,7 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
           trackXYErrVtx[nVertices][nTracksTmp] = track->d0Error();
           trackZErrVtx[nVertices][nTracksTmp] = track->dzError();
           trackHPVtx[nVertices][nTracksTmp] = track->quality(reco::TrackBase::highPurity);
-
+//std::cout<<nVertices<<" "<<zVtx[nVertices]<<" "<<nTracksTmp<<" "<<trackPtVtx[nVertices][nTracksTmp]<<" "<<trackZVtx[nVertices][nTracksTmp]<<std::endl;
           nTracksTmp++;
        }
        nTracks[nVertices] = nTracksTmp;
@@ -209,9 +217,48 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
        nVertices++;
      }
    }
+/*
+   for(uint i=0;i<nVertices;i++)
+   {
+     for(uint j=0;j<nTracks[i];j++)
+     {
+std::cout<<"After: "<<i<<" "<<zVtx[i]<<" "<<j<<" "<<trackPtVtx[i][j]<<" "<<trackZVtx[i][j]<<std::endl;
+
+     }
+   }
+*/
    vertexTree->Fill();
 }
 
+void
+IsoVertexIDTreeAnalyzer::resetArrays()
+{
+  for(int i=0;i<NMAXVTX;i++)
+  {
+    xVtx[i] = -999.0;
+    yVtx[i] = -999.0;
+    zVtx[i] = -999.0;
+    xVtxErr[i] = -999.0;
+    yVtxErr[i] = -999.0;
+    zVtxErr[i] = -999.0;
+    chi2Vtx[i] = -999.0;
+    ndofVtx[i] = -999.0;
+    nTracks[i] = -999;
+    
+    for(int j=0;j<NMAXTRACKSVTX;j++)
+    {
+      trackWeightVtx[i][j] = -999.0;
+      trackPtVtx[i][j] = -999.0;
+      trackPtErrVtx[i][j] = -999.0;
+      trackXVtx[i][j] = -999.0;
+      trackYVtx[i][j] = -999.0;
+      trackZVtx[i][j] = -999.0;
+      trackXYErrVtx[i][j] = -999.0;
+      trackZErrVtx[i][j] = -999.0;
+      trackHPVtx[i][j] = -999.0;
+    }
+  }
+}
 
 // ------------ method called once each job just before starting event loop  ------------
 void 
