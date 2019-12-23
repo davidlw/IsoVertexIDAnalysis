@@ -40,6 +40,9 @@
 #include "Math/PdfFuncMathCore.h"
 #include "Math/QuantFuncMathCore.h"
 #include "TMath.h"
+#include "TH2.h"
+#include "TH1.h"
+#include "TFile.h"
 //
 // class declaration
 //
@@ -58,6 +61,8 @@ class IsoVertexIDProducer : public edm::stream::EDProducer<> {
       float sigmaZ_;
       float nSigmaZ_;
       float fContaminationMin_;
+
+      TH2D* hfContaminationMap_;
 
       edm::EDGetTokenT<reco::TrackCollection> token_tracks;
       edm::EDGetTokenT<reco::VertexCollection> token_vertices;
@@ -94,6 +99,11 @@ fContaminationMin_(iConfig.getParameter<double>("fContaminationMin"))
 {
   token_vertices = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("VertexCollection"));
   token_tracks = consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("TrackCollection"));
+
+  edm::FileInPath fip("IsoVertexIDAnalysis/IsoVertexIDProducer/data/fContamination_map.root");
+  TFile f(fip.fullPath().c_str(),"READ");
+  hfContaminationMap_ = (TH2D*)f.Get("hfContaminationMap");
+  f.Close();
 
   produces< reco::VertexCollection >("");
 
@@ -199,8 +209,9 @@ IsoVertexIDProducer::fContamination(reco::Vertex vtx2, reco::Vertex vtx)
   float zvtx = vtx.z();
   float ntrk = vtx.tracksSize();
 
-  float deltaZ = zvtx2 - zvtx;
-  float fcont = ntrk2 * ROOT::Math::gaussian_cdf(-fabs(deltaZ)/sigmaZ_+nSigmaZ_) / ntrk;
+  float deltaZ =zvtx - zvtx2;
+//  float fcont = ntrk2 * ROOT::Math::gaussian_cdf(-fabs(deltaZ)/sigmaZ_+nSigmaZ_) / ntrk;
+  float fcont = ntrk2 * hfContaminationMap_->GetBinContent(hfContaminationMap_->FindBin(deltaZ-nSigmaZ_*sigmaZ_,deltaZ+nSigmaZ_*sigmaZ_)) / ntrk;
 
   return fcont;
 }

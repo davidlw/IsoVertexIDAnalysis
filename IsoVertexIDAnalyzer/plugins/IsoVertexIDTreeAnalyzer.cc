@@ -68,8 +68,8 @@ class TTree;
 // constructor "usesResource("TFileService");"
 // This will improve performance in multithreaded jobs.
 
-#define NMAXVTX 200
-#define NMAXTRACKSVTX 800
+#define NMAXVTX 100
+#define NMAXTRACKSVTX 300
 
 class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
    public:
@@ -278,15 +278,15 @@ IsoVertexIDTreeAnalyzer::beginJob()
   vertexTree->Branch("nTracks",nTracks,"nTracks[nVertices]/i");
   vertexTree->Branch("chi2Vtx",chi2Vtx,"chi2Vtx[nVertices]/F");
   vertexTree->Branch("ndofVtx",ndofVtx,"ndofVtx[nVertices]/i");
-  vertexTree->Branch("trackWeightVtx",trackWeightVtx,"trackWeightVtx[nVertices][800]/F");
-  vertexTree->Branch("trackPtVtx",trackPtVtx,"trackPtVtx[nVertices][800]/F");
-  vertexTree->Branch("trackPtErrVtx",trackPtErrVtx,"trackPtErrVtx[nVertices][800]/F");
-  vertexTree->Branch("trackXVtx",trackXVtx,"trackXVtx[nVertices][800]/F");
-  vertexTree->Branch("trackYVtx",trackYVtx,"trackYVtx[nVertices][800]/F");
-  vertexTree->Branch("trackZVtx",trackZVtx,"trackZVtx[nVertices][800]/F");
-  vertexTree->Branch("trackXYErrVtx",trackYVtx,"trackXYErrVtx[nVertices][800]/F");
-  vertexTree->Branch("trackZErrVtx",trackZVtx,"trackZErrVtx[nVertices][800]/F");
-  vertexTree->Branch("trackHPVtx",trackHPVtx,"trackHPVtx[nVertices][800]/O");
+  vertexTree->Branch("trackWeightVtx",trackWeightVtx,"trackWeightVtx[nVertices][300]/F");
+  vertexTree->Branch("trackPtVtx",trackPtVtx,"trackPtVtx[nVertices][300]/F");
+  vertexTree->Branch("trackPtErrVtx",trackPtErrVtx,"trackPtErrVtx[nVertices][300]/F");
+  vertexTree->Branch("trackXVtx",trackXVtx,"trackXVtx[nVertices][300]/F");
+  vertexTree->Branch("trackYVtx",trackYVtx,"trackYVtx[nVertices][300]/F");
+  vertexTree->Branch("trackZVtx",trackZVtx,"trackZVtx[nVertices][300]/F");
+  vertexTree->Branch("trackXYErrVtx",trackYVtx,"trackXYErrVtx[nVertices][300]/F");
+  vertexTree->Branch("trackZErrVtx",trackZVtx,"trackZErrVtx[nVertices][300]/F");
+  vertexTree->Branch("trackHPVtx",trackHPVtx,"trackHPVtx[nVertices][300]/O");
 }
 
 // ------------ method called once each job just after ending the event loop  ------------

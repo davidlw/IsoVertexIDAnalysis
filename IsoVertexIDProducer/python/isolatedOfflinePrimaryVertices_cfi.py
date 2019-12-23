@@ -5,7 +5,7 @@ isolatedOfflinePrimaryVertices = cms.EDProducer('IsoVertexIDProducer',
   TrackCollection = cms.InputTag('generalTracks'),
   VertexCollection = cms.InputTag('offlinePrimaryVertices'),
 
-  sigmaZ = cms.double(0.1),
-  nSigmaZ = cms.double(5),
+  sigmaZ = cms.double(0.08),
+  nSigmaZ = cms.double(4.5),
   fContaminationMin = cms.double(0.01)
 )
