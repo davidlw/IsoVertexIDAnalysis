@@ -90,6 +90,8 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       uint eventNb;
       uint lsNb;
 
+      bool isSlim_;
+
       uint nVertices;
       uint nTracks[NMAXVTX];
 
@@ -103,6 +105,8 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       int   ndofVtx[NMAXVTX];
       float trackWeightVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackPtVtx[NMAXVTX][NMAXTRACKSVTX];
+      float trackEtaVtx[NMAXVTX][NMAXTRACKSVTX];
+      float trackPhiVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackPtErrVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackXVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackYVtx[NMAXVTX][NMAXTRACKSVTX];
@@ -130,8 +134,8 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
 //
 // constructors and destructor
 //
-IsoVertexIDTreeAnalyzer::IsoVertexIDTreeAnalyzer(const edm::ParameterSet& iConfig)
-
+IsoVertexIDTreeAnalyzer::IsoVertexIDTreeAnalyzer(const edm::ParameterSet& iConfig):
+isSlim_(iConfig.getParameter<bool>("isSlim"))
 {
    //now do what ever initialization is needed
    usesResource("TFileService");
@@ -202,6 +206,8 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
 
           trackWeightVtx[nVertices][nTracksTmp] = vtx.trackWeight(*iTrack);
           trackPtVtx[nVertices][nTracksTmp] = track->pt();
+          trackEtaVtx[nVertices][nTracksTmp] = track->eta();
+          trackPhiVtx[nVertices][nTracksTmp] = track->phi();
           trackPtErrVtx[nVertices][nTracksTmp] = track->ptError();
           trackXVtx[nVertices][nTracksTmp] = track->vx();
           trackYVtx[nVertices][nTracksTmp] = track->vy();
@@ -210,6 +216,14 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
           trackZErrVtx[nVertices][nTracksTmp] = track->dzError();
           trackHPVtx[nVertices][nTracksTmp] = track->quality(reco::TrackBase::highPurity);
 //std::cout<<nVertices<<" "<<zVtx[nVertices]<<" "<<nTracksTmp<<" "<<trackPtVtx[nVertices][nTracksTmp]<<" "<<trackZVtx[nVertices][nTracksTmp]<<std::endl;
+
+          if(isSlim_)
+          {
+            if(!trackHPVtx[nVertices][nTracksTmp]) continue;
+            if(trackPtErrVtx[nVertices][nTracksTmp]/trackPtVtx[nVertices][nTracksTmp]>0.1) continue;
+            if(fabs(trackZVtx[nVertices][nTracksTmp]-zVtx[nVertices])/pow(trackZErrVtx[nVertices][nTracksTmp]*trackZErrVtx[nVertices][nTracksTmp]+zVtxErr[nVertices]*zVtxErr[nVertices],0.5)>3) continue;
+            if(pow(pow(trackXVtx[nVertices][nTracksTmp]-xVtx[nVertices],2)+pow(trackYVtx[nVertices][nTracksTmp]-yVtx[nVertices],2),0.5)/pow(trackXYErrVtx[nVertices][nTracksTmp]*trackXYErrVtx[nVertices][nTracksTmp]+xVtxErr[nVertices]*yVtxErr[nVertices],0.5)>3) continue;             
+          }
           nTracksTmp++;
        }
        nTracks[nVertices] = nTracksTmp;
@@ -249,6 +263,8 @@ IsoVertexIDTreeAnalyzer::resetArrays()
     {
       trackWeightVtx[i][j] = -999.0;
       trackPtVtx[i][j] = -999.0;
+      trackEtaVtx[i][j] = -999.0;
+      trackPhiVtx[i][j] = -999.0;
       trackPtErrVtx[i][j] = -999.0;
       trackXVtx[i][j] = -999.0;
       trackYVtx[i][j] = -999.0;
@@ -272,21 +288,27 @@ IsoVertexIDTreeAnalyzer::beginJob()
   vertexTree->Branch("xVtx",xVtx,"xVtx[nVertices]/F");
   vertexTree->Branch("yVtx",yVtx,"yVtx[nVertices]/F");
   vertexTree->Branch("zVtx",zVtx,"zVtx[nVertices]/F");
-  vertexTree->Branch("xVtxErr",xVtxErr,"xVtxErr[nVertices]/F");
-  vertexTree->Branch("yVtxErr",yVtxErr,"yVtxErr[nVertices]/F");
-  vertexTree->Branch("zVtxErr",zVtxErr,"zVtxErr[nVertices]/F");
   vertexTree->Branch("nTracks",nTracks,"nTracks[nVertices]/i");
-  vertexTree->Branch("chi2Vtx",chi2Vtx,"chi2Vtx[nVertices]/F");
-  vertexTree->Branch("ndofVtx",ndofVtx,"ndofVtx[nVertices]/i");
-  vertexTree->Branch("trackWeightVtx",trackWeightVtx,"trackWeightVtx[nVertices][300]/F");
   vertexTree->Branch("trackPtVtx",trackPtVtx,"trackPtVtx[nVertices][300]/F");
-  vertexTree->Branch("trackPtErrVtx",trackPtErrVtx,"trackPtErrVtx[nVertices][300]/F");
-  vertexTree->Branch("trackXVtx",trackXVtx,"trackXVtx[nVertices][300]/F");
-  vertexTree->Branch("trackYVtx",trackYVtx,"trackYVtx[nVertices][300]/F");
-  vertexTree->Branch("trackZVtx",trackZVtx,"trackZVtx[nVertices][300]/F");
-  vertexTree->Branch("trackXYErrVtx",trackYVtx,"trackXYErrVtx[nVertices][300]/F");
-  vertexTree->Branch("trackZErrVtx",trackZVtx,"trackZErrVtx[nVertices][300]/F");
-  vertexTree->Branch("trackHPVtx",trackHPVtx,"trackHPVtx[nVertices][300]/O");
+  vertexTree->Branch("trackEtaVtx",trackEtaVtx,"trackEtaVtx[nVertices][300]/F");
+  vertexTree->Branch("trackPhiVtx",trackPhiVtx,"trackPhiVtx[nVertices][300]/F");
+
+  if(!isSlim_)
+  {
+    vertexTree->Branch("xVtxErr",xVtxErr,"xVtxErr[nVertices]/F");
+    vertexTree->Branch("yVtxErr",yVtxErr,"yVtxErr[nVertices]/F");
+    vertexTree->Branch("zVtxErr",zVtxErr,"zVtxErr[nVertices]/F");
+    vertexTree->Branch("chi2Vtx",chi2Vtx,"chi2Vtx[nVertices]/F");
+    vertexTree->Branch("ndofVtx",ndofVtx,"ndofVtx[nVertices]/i");
+    vertexTree->Branch("trackWeightVtx",trackWeightVtx,"trackWeightVtx[nVertices][300]/F");
+    vertexTree->Branch("trackPtErrVtx",trackPtErrVtx,"trackPtErrVtx[nVertices][300]/F");
+    vertexTree->Branch("trackXVtx",trackXVtx,"trackXVtx[nVertices][300]/F");
+    vertexTree->Branch("trackYVtx",trackYVtx,"trackYVtx[nVertices][300]/F");
+    vertexTree->Branch("trackZVtx",trackZVtx,"trackZVtx[nVertices][300]/F");
+    vertexTree->Branch("trackXYErrVtx",trackYVtx,"trackXYErrVtx[nVertices][300]/F");
+    vertexTree->Branch("trackZErrVtx",trackZVtx,"trackZErrVtx[nVertices][300]/F");
+    vertexTree->Branch("trackHPVtx",trackHPVtx,"trackHPVtx[nVertices][300]/O");
+  }
 }
 
 // ------------ method called once each job just after ending the event loop  ------------

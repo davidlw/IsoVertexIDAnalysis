@@ -63,6 +63,8 @@ process.TFileService = cms.Service("TFileService",
 
 process.vertextree_isolated_ana = process.vertextree_ana.clone()
 process.vertextree_isolated_ana.VertexCollection = cms.InputTag('isolatedOfflinePrimaryVertices')
+process.vertextree_ana.isSlim = cms.bool(True)
+process.vertextree_isolated_ana.isSlim = cms.bool(True)
 
 process.ana = cms.Path(process.eventFilter_HM * process.vertextree_ana)
 process.ana_iso = cms.Path(process.eventFilter_HM * process.vertextree_isolated_ana)
