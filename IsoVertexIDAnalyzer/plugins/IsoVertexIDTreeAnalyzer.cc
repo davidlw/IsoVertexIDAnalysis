@@ -27,6 +27,7 @@
 #include <string>
 
 // user include files
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
@@ -83,6 +84,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       edm::Service<TFileService> theOutputs;
       edm::EDGetTokenT<reco::TrackCollection> token_tracks;
       edm::EDGetTokenT<reco::VertexCollection> token_vertices;
+      edm::EDGetTokenT<std::vector< PileupSummaryInfo > > token_genPU;   
 
       TTree* vertexTree;
 
@@ -91,6 +93,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       uint lsNb;
 
       bool isSlim_;
+      bool isMC_;
 
       uint nVertices;
       uint nTracks[NMAXVTX];
@@ -115,6 +118,10 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       float trackZErrVtx[NMAXVTX][NMAXTRACKSVTX];
       bool  trackHPVtx[NMAXVTX][NMAXTRACKSVTX];
 
+      float meanPU_gen;
+      int nVertices_gen;
+      std::vector< float > zVtx_gen;
+
       void resetArrays();
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
@@ -135,13 +142,17 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
 // constructors and destructor
 //
 IsoVertexIDTreeAnalyzer::IsoVertexIDTreeAnalyzer(const edm::ParameterSet& iConfig):
-isSlim_(iConfig.getParameter<bool>("isSlim"))
+isSlim_(iConfig.getParameter<bool>("isSlim")),
+isMC_(iConfig.getParameter<bool>("isMC"))
 {
    //now do what ever initialization is needed
    usesResource("TFileService");
 
    token_vertices = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("VertexCollection"));
    token_tracks = consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("TrackCollection"));
+
+   edm::InputTag PileupSrc_("addPileupInfo");
+   if(isMC_) token_genPU = consumes< std::vector< PileupSummaryInfo > >(PileupSrc_);
 }
 
 
@@ -179,6 +190,22 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
    runNb = iEvent.id().run();
    eventNb = iEvent.id().event();
    lsNb = iEvent.luminosityBlock();
+ 
+   //get the GEN level Vertex info
+   if(isMC_){
+     edm::Handle<std::vector< PileupSummaryInfo > >  PupInfo;
+     iEvent.getByToken(token_genPU, PupInfo);
+
+     std::vector<PileupSummaryInfo>::const_iterator PVI;
+     for(PVI = PupInfo->begin(); PVI != PupInfo->end(); ++PVI) {
+       if(PVI->getBunchCrossing() == 0){//we only want the in-time bunch crossing
+         meanPU_gen = PVI->getTrueNumInteractions();
+         nVertices_gen = PVI->getPU_NumInteractions();
+         for(size_t i = 0; i<PVI->getPU_zpositions().size() ; i++ ) zVtx_gen.push_back( (PVI->getPU_zpositions()).at(i) );
+       }
+       //std::cout << " Pileup Information: bunchXing, nvtx: " << PVI->getBunchCrossing() << " " << PVI->getPU_NumInteractions() << std::endl;
+     }
+   }
 
    nVertices=0;
 
@@ -216,6 +243,8 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
           trackZErrVtx[nVertices][nTracksTmp] = track->dzError();
           trackHPVtx[nVertices][nTracksTmp] = track->quality(reco::TrackBase::highPurity);
 //std::cout<<nVertices<<" "<<zVtx[nVertices]<<" "<<nTracksTmp<<" "<<trackPtVtx[nVertices][nTracksTmp]<<" "<<trackZVtx[nVertices][nTracksTmp]<<std::endl;
+
+          if(isMC_) isMC_ = true;
 
           if(isSlim_)
           {
@@ -274,6 +303,11 @@ IsoVertexIDTreeAnalyzer::resetArrays()
       trackHPVtx[i][j] = -999.0;
     }
   }
+  if(isMC_){
+    meanPU_gen = -999;
+    nVertices_gen = -999;
+    zVtx_gen.clear();
+  }
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -308,6 +342,11 @@ IsoVertexIDTreeAnalyzer::beginJob()
     vertexTree->Branch("trackXYErrVtx",trackYVtx,"trackXYErrVtx[nVertices][300]/F");
     vertexTree->Branch("trackZErrVtx",trackZVtx,"trackZErrVtx[nVertices][300]/F");
     vertexTree->Branch("trackHPVtx",trackHPVtx,"trackHPVtx[nVertices][300]/O");
+  }
+  if(isMC_){
+    vertexTree->Branch("meanPU_gen",&meanPU_gen,"meanPU_gen/F");
+    vertexTree->Branch("nVertices_gen",&nVertices_gen,"nVertices_gen/I");
+    vertexTree->Branch("zVtx_gen",&zVtx_gen);
   }
 }
 
