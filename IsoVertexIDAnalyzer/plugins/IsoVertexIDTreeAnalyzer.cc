@@ -151,6 +151,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       std::vector< float > xVtx_gen;
       std::vector< float > yVtx_gen;
       std::vector< float > zVtx_gen;
+      std::vector< float > minZSepGen;
 
       void resetArrays();
       virtual void beginJob() override;
@@ -264,7 +265,16 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
          zVtx_gen.push_back(tv->position().z());
        }
      }
-     nVertices_gen = eventIDList.size();    
+     nVertices_gen = eventIDList.size(); 
+     for(size_t i = 0; i<zVtx_gen.size(); i++){
+       float minSepZ = 999;
+       for(size_t j = 0; j<zVtx_gen.size(); j++){
+         if(i==j) continue;
+         float sep = fabs( zVtx_gen.at(i) - zVtx_gen.at(j) );
+         if( sep < minSepZ) minSepZ = sep; 
+       }
+       minZSepGen.push_back(minSepZ);
+     }
    }
    
    //track association maps (need to fix scoping here)
@@ -471,6 +481,7 @@ IsoVertexIDTreeAnalyzer::resetArrays()
     xVtx_gen.clear();
     yVtx_gen.clear();
     zVtx_gen.clear();
+    minZSepGen.clear();
   }
 }
 
@@ -518,6 +529,7 @@ IsoVertexIDTreeAnalyzer::beginJob()
     vertexTree->Branch("xVtx_gen",&xVtx_gen);
     vertexTree->Branch("yVtx_gen",&yVtx_gen);
     vertexTree->Branch("zVtx_gen",&zVtx_gen);
+    vertexTree->Branch("minZSepGen",&minZSepGen);
   }
 }
 
