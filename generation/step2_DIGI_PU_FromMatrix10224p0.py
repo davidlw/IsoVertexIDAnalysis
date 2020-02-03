@@ -25,7 +25,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(5000)
+    input = cms.untracked.int32(5)
 )
 
 # Input source
@@ -70,7 +70,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
         dataTier = cms.untracked.string('GEN-SIM-DIGI-RAW'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:step2_Poisson30.root'),
+    fileName = cms.untracked.string('file:step2_Poisson50.root'),
     outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -78,7 +78,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
 # Additional output definition
 
 # Other statements
-process.mix.input.nbPileupEvents.averageNumber = cms.double(30.000000)
+process.mix.input.nbPileupEvents.averageNumber = cms.double(50.000000)
 process.mix.bunchspace = cms.int32(25)
 process.mix.minBunch = cms.int32(-5)
 process.mix.maxBunch = cms.int32(3)
