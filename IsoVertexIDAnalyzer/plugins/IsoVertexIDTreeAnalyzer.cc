@@ -119,6 +119,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
 
       uint nVertices;
       uint nTracks[NMAXVTX];
+      uint nTracks_ptGT0p3EtaLT2p4[NMAXVTX];
 
       float xVtx[NMAXVTX];
       float yVtx[NMAXVTX];
@@ -130,8 +131,10 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       int   ndofVtx[NMAXVTX];
       float minZSepReco[NMAXVTX];
       int   bestMatchGenByWeight[NMAXVTX];
+      int   bestMatchGenByWeightMult[NMAXVTX];
       float contaminationFracByWeight[NMAXVTX];
       int   bestMatchGenByTracks[NMAXVTX];
+      int   bestMatchGenByTracksMult[NMAXVTX];
       float contaminationFracByTracks[NMAXVTX];
       float trackWeightVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackPtVtx[NMAXVTX][NMAXTRACKSVTX];
@@ -151,6 +154,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       std::vector< float > xVtx_gen;
       std::vector< float > yVtx_gen;
       std::vector< float > zVtx_gen;
+      std::vector< int > nTracks_gen;
       std::vector< float > minZSepGen;
 
       void resetArrays();
@@ -254,15 +258,25 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
        if(processTotal > 0) continue;
        
        //std::cout << tv->eventId().event() << " " <<  tv->daughterTracks().size() << std::endl;
+       
+       //get the gen multiplicity
+       int mult = 0;
+       TrackingParticleRefVector::iterator daughters;
+       for( daughters = tv->daughterTracks_begin(); daughters != tv->daughterTracks_end(); ++daughters){
+         if((*daughters)->pt() > 0.3 && TMath::Abs((*daughters)->eta()) < 2.4 && (*daughters)->charge()!=0) mult++;
+       }
 
        //take the first tracking vertex from the event to be it's position
        //Note: this may be slightly inaccurate if a PV splits into multiple tracking vertices, but it looks like the differences are <0.1cm in z on average
-       std::vector<int>::iterator it = std::find(eventIDList.begin(), eventIDList.end(), tv->eventId().event());     
+       std::vector<int>::iterator it = std::find(eventIDList.begin(), eventIDList.end(), tv->eventId().event());    
        if (it == eventIDList.end()){
          eventIDList.push_back(tv->eventId().event());
          xVtx_gen.push_back(tv->position().x());
          yVtx_gen.push_back(tv->position().y());
          zVtx_gen.push_back(tv->position().z());
+         nTracks_gen.push_back(mult);
+       } else {
+         nTracks_gen.at( std::distance( eventIDList.begin(), it) ) += mult;//add these tracks to a event we already found
        }
      }
      nVertices_gen = eventIDList.size(); 
@@ -398,6 +412,8 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
             }
           }
 
+          if(trackHPVtx[nVertices][nTracksTmp] && trackPtVtx[nVertices][nTracksTmp]>0.3 && TMath::Abs(trackEtaVtx[nVertices][nTracksTmp]) < 2.4) nTracks_ptGT0p3EtaLT2p4[nVertices]++;
+
           if(isSlim_)
           {
             if(!trackHPVtx[nVertices][nTracksTmp]) continue;
@@ -413,9 +429,11 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
          for(size_t i = 0; i<eventIDList.size(); i++) trackTotals.at(i) = trackTotals.at(i)/trackNet;
          std::vector< float >::iterator maxEle = std::max_element(weightTotals.begin(), weightTotals.end());
          bestMatchGenByWeight[nVertices] = std::distance( weightTotals.begin(), maxEle);
+         if(bestMatchGenByWeight[nVertices] >=0) bestMatchGenByWeightMult[nVertices] = nTracks_gen[bestMatchGenByWeight[nVertices]];
          contaminationFracByWeight[nVertices] = 1 - *maxEle;
          std::vector< float >::iterator maxEleTrk = std::max_element(trackTotals.begin(), trackTotals.end());
          bestMatchGenByTracks[nVertices] = std::distance( trackTotals.begin(), maxEleTrk);
+         if(bestMatchGenByTracks[nVertices] >=0) bestMatchGenByTracksMult[nVertices] = nTracks_gen[bestMatchGenByTracks[nVertices]];
          contaminationFracByTracks[nVertices] = 1 - *maxEleTrk;
        }
 
@@ -451,11 +469,14 @@ IsoVertexIDTreeAnalyzer::resetArrays()
     chi2Vtx[i] = -999.0;
     ndofVtx[i] = -999.0;
     nTracks[i] = -999;
+    nTracks_ptGT0p3EtaLT2p4[i] = 0;
     if(isMC_){
       contaminationFracByWeight[i] = -1;   
       contaminationFracByTracks[i] = -1;   
       bestMatchGenByWeight[i] = -1; 
+      bestMatchGenByWeightMult[i] = -1; 
       bestMatchGenByTracks[i] = -1; 
+      bestMatchGenByTracksMult[i] = -1; 
     }
     minZSepReco[i] = 999.0;
 
@@ -481,6 +502,7 @@ IsoVertexIDTreeAnalyzer::resetArrays()
     xVtx_gen.clear();
     yVtx_gen.clear();
     zVtx_gen.clear();
+    nTracks_gen.clear();
     minZSepGen.clear();
   }
 }
@@ -498,6 +520,7 @@ IsoVertexIDTreeAnalyzer::beginJob()
   vertexTree->Branch("yVtx",yVtx,"yVtx[nVertices]/F");
   vertexTree->Branch("zVtx",zVtx,"zVtx[nVertices]/F");
   vertexTree->Branch("nTracks",nTracks,"nTracks[nVertices]/i");
+  vertexTree->Branch("nTracks_ptGT0p3EtaLT2p4",nTracks_ptGT0p3EtaLT2p4,"nTracks_ptGT0p3EtaLT2p4[nVertices]/i");
   vertexTree->Branch("trackPtVtx",trackPtVtx,"trackPtVtx[nVertices][300]/F");
   vertexTree->Branch("trackEtaVtx",trackEtaVtx,"trackEtaVtx[nVertices][300]/F");
   vertexTree->Branch("trackPhiVtx",trackPhiVtx,"trackPhiVtx[nVertices][300]/F");
@@ -521,14 +544,17 @@ IsoVertexIDTreeAnalyzer::beginJob()
   }
   if(isMC_){
     vertexTree->Branch("bestMatchGenByWeight",bestMatchGenByWeight,"bestMatchGenByWeight[nVertices]/I");
+    vertexTree->Branch("bestMatchGenByWeightMult",bestMatchGenByWeightMult,"bestMatchGenByWeightMult[nVertices]/I");
     vertexTree->Branch("contaminationFracByWeight",contaminationFracByWeight,"contaminationFracByWeight[nVertices]/F");
     vertexTree->Branch("bestMatchGenByTracks",bestMatchGenByTracks,"bestMatchGenByTracks[nVertices]/I");
+    vertexTree->Branch("bestMatchGenByTracksMult",bestMatchGenByTracksMult,"bestMatchGenByTracksMult[nVertices]/I");
     vertexTree->Branch("contaminationFracByTracks",contaminationFracByTracks,"contaminationFracByTracks[nVertices]/F");
     vertexTree->Branch("trackGenVertex",trackGenVertex,"trackGenVertex[nVertices][300]/I");
     vertexTree->Branch("nVertices_gen",&nVertices_gen,"nVertices_gen/I");
     vertexTree->Branch("xVtx_gen",&xVtx_gen);
     vertexTree->Branch("yVtx_gen",&yVtx_gen);
     vertexTree->Branch("zVtx_gen",&zVtx_gen);
+    vertexTree->Branch("nTracks_ptGT0p3EtaLT2p4_gen",&nTracks_gen);
     vertexTree->Branch("minZSepGen",&minZSepGen);
   }
 }
