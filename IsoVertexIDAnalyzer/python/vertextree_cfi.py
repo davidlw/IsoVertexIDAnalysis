@@ -5,5 +5,8 @@ vertextree_ana = cms.EDAnalyzer('IsoVertexIDTreeAnalyzer',
   TrackCollection = cms.InputTag('generalTracks'),
   VertexCollection = cms.InputTag('offlinePrimaryVertices'),
 
-  isSlim = cms.bool(False)
+  associatorMap = cms.InputTag('tpRecoAssocGeneralTracks'),
+
+  isSlim = cms.bool(False),
+  isMC = cms.bool(False)
 )
