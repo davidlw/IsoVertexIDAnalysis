@@ -151,7 +151,11 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
       
       l1[lIndex] = new TLine(zTrk[index][j] ,0,xStop ,yStop);
       l1[lIndex]->SetLineColor(i%2+1);
-      //if(trackGenVertex[index][j] < 0) l1[lIndex]->SetLineColor(4);
+      if(trackGenVertex[index][j] != bestMatchGenByWeight[index] ){
+        l1[lIndex]->SetLineColor(4);
+        l1[lIndex]->SetLineWidth(2);
+        l1[lIndex]->SetLineStyle(2);
+      }
       //if(trackHPVtx[index][j] == false) l1[lIndex]->SetLineStyle(2);
       l1[lIndex]->Draw("same");
       lIndex++;      

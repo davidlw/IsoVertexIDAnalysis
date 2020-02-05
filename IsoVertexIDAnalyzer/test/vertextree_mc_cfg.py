@@ -5,7 +5,7 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 2000
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10)
+    input = cms.untracked.int32(1000)
 )
 
 #Trigger Selection
@@ -46,7 +46,9 @@ process.source = cms.Source("PoolSource",
                                 fileNames = cms.untracked.vstring(
 #'root://cms-xrd-global.cern.ch//store/mc/RunIISummer16DR80/MinBias_TuneCUETP8M1_13TeV-pythia8/AODSIM/NoPU_80X_mcRun2_asymptotic_v14-v1/90000/F6F8F73B-C773-E611-994B-FA163EF5B328.root'
 #/QCD_pThat-15_Dijet_TuneCP5_5p02TeV_pythia8/clindsey-RECODEBUG_5M_20190809-1728443825029465ed1ddcc6bf2afd0a/USER ----- pthat 15 2017 5 TeV reference pp MC w/ RECODEBUG info on phys03 (pileup is poisson of exactly 2)
-'file://step3.root'                )
+#'file://step3.root'     
+'file:///storage1/users/aab9/PileupFlow_Feb2_FEVTDEBUG/step3_Poisson15.root'
+           )
 #                                secondaryFileNames = cms.untracked.vstring('')
                             )
 
@@ -79,7 +81,7 @@ process.options = cms.untracked.PSet(
 
 # Additional output definition
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string('vertextree.root')
+                                   fileName = cms.string('vertextree_Poisson15.root')
                                    )
 
 process.ana = cms.Path(process.eventFilter_HM * process.TrkAssociationSequence * process.vertextree_ana)
