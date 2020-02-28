@@ -315,6 +315,7 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
        {
          tp = recSimColl[trk];
          mtp = tp.begin()->first.get();
+         if(mtp->eventId().bunchCrossing()!=0) continue;
          trk2EvtMap.insert(std::pair<long, int>( trkIdMaker(trk->pt(), trk->eta(), trk->phi(), trk->vz(), trk->chi2() ) , mtp->eventId().event())  );
          //std::cout << mtp->eventId().event() << std::endl;
        }

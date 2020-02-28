@@ -14,6 +14,7 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
 
   TFile * f = TFile::Open(fileName.c_str(),"read");
   TTree * t = (TTree*)f->Get("vertextree_ana/vertexTree");
+  TTree * tIso = (TTree*)f->Get("vertextree_iso_ana/vertexTree");
 
   std::vector< float > * zVtx_gen = 0;   
   unsigned int nVertices = 0;
@@ -25,6 +26,12 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
   bool trackHPVtx[300][300] = {0};
   float contaminationFracByWeight[300] = {0};
   int bestMatchGenByWeight[300] = {0};
+
+  unsigned int nVerticesIso = 0;
+  float zVtxIso[300] = {0};
+
+  tIso->SetBranchAddress("zVtx",&zVtxIso);
+  tIso->SetBranchAddress("nVertices",&nVerticesIso);
 
   t->SetBranchAddress("zVtx_gen",&zVtx_gen); 
   t->SetBranchAddress("nVertices",&nVertices);
@@ -38,15 +45,17 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
   t->SetBranchAddress("bestMatchGenByWeight",&bestMatchGenByWeight);
 
   t->GetEntry(eventNumber);
-  
+  tIso->GetEntry(eventNumber); 
+ 
   gStyle->SetOptStat(0);
   gStyle->SetPadTickX(1);
   gStyle->SetPadTickY(1);
 
   TCanvas * c1 =new TCanvas("c1","c1",1200,800);
   c1->SetBorderSize(0);
-  TPad * p1 = new TPad("p1","p1",0,0.2,1,1,0);
-  TPad * p2 = new TPad("p2","p2",0,0,1,0.2,0);
+  TPad * p1 = new TPad("p1","p1",0,0.3,1,1,0);
+  TPad * p2 = new TPad("p2","p2",0,0.2,1,0.3,0);
+  TPad * p3 = new TPad("p3","p3",0,0,1,0.2,0);
   c1->SetLineWidth(0);
   p1->SetBottomMargin(0);
   p1->SetLeftMargin(0.1);
@@ -57,9 +66,15 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
   p2->SetTopMargin(0);
   p2->SetLeftMargin(0.1);
   p2->SetRightMargin(0.05);
-  p2->SetBottomMargin(0.42);
+  p2->SetBottomMargin(0);
   p2->SetBorderSize(0);
   p2->Draw();
+  p3->SetTopMargin(0);
+  p3->SetLeftMargin(0.1);
+  p3->SetRightMargin(0.05);
+  p3->SetBottomMargin(0.42);
+  p3->SetBorderSize(0);
+  p3->Draw();
   p1->cd();
 
   TH1D * topDummy = new TH1D("topDummy",";z (cm); GenTop",1,-maxZ,maxZ);
@@ -69,7 +84,7 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
   topDummy->GetYaxis()->CenterTitle();
   topDummy->Draw("p");
   
-  p2->cd();
+  p3->cd();
   TH1D * botDummy = new TH1D("botDummy",";z (cm); Gen",1,-maxZ,maxZ);
   botDummy->Fill(0.001);
   botDummy->GetYaxis()->SetRangeUser(-0.1,0.1);
@@ -80,8 +95,13 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
   botDummy->GetYaxis()->SetLabelSize(0);
   botDummy->GetXaxis()->SetTitleSize(0.2);
   botDummy->GetXaxis()->SetLabelSize(0.2);
-  botDummy->Draw("p");
+  botDummy->DrawCopy("p");
   
+  p2->cd();
+  botDummy->GetYaxis()->SetTitleSize(0.23);
+  botDummy->GetYaxis()->SetTitle("Iso");
+  botDummy->Draw("p");
+  p3->cd();
 
   TMarker * m[300];
   TLine * l[300];
@@ -100,6 +120,26 @@ void visualization(int eventNumber, std::string fileName, std::string tag = "", 
     colorID.push_back(c);
     c++;
   }
+
+  p2->cd();
+  TMarker * mIso[300];
+  TLine * lIso[300];
+  std::vector< float > isoZ;
+  for(unsigned int i = 0; i<nVerticesIso; i++) isoZ.push_back(zVtxIso[i]);
+  std::sort(isoZ.begin(), isoZ.end());
+  c = 0;
+  for(unsigned int i = 0; i<isoZ.size(); i++){
+    mIso[i] = new TMarker(isoZ.at(i), 0, 8);
+    mIso[i]->SetMarkerColor(c%2+1);
+    mIso[i]->SetMarkerSize(1.4);
+    mIso[i]->Draw("same");
+    lIso[i] = new TLine(isoZ.at(i),-0.1,isoZ.at(i),0.1);
+    lIso[i]->SetLineColor(c%2 +1);
+    lIso[i]->SetLineStyle(2);
+    lIso[i]->Draw();
+    c++;
+  }
+
 
   p1->cd();
   TLine * lR[300];
