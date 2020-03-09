@@ -4,6 +4,8 @@ vertextree_ana = cms.EDAnalyzer('IsoVertexIDTreeAnalyzer',
 
   TrackCollection = cms.InputTag('generalTracks'),
   VertexCollection = cms.InputTag('offlinePrimaryVertices'),
+  UnfilteredVertexCollection = cms.InputTag('offlinePrimaryVertices'),
+  MuonCollection = cms.untracked.InputTag('patMuonsWithTrigger'),
 
   associatorMap = cms.InputTag('tpRecoAssocGeneralTracks'),
 
