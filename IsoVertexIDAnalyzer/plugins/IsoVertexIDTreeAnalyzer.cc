@@ -66,6 +66,9 @@
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include "SimGeneral/HepPDTRecord/interface/ParticleDataTable.h"
 #include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/MuonReco/interface/Muon.h"
+#include "DataFormats/MuonReco/interface/MuonFwd.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
 
 #include <TTree.h>
 
@@ -83,6 +86,7 @@ class TTree;
 
 #define NMAXVTX 100
 #define NMAXTRACKSVTX 300
+#define NMAXMUONSVTX 10
 
 class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
    public:
@@ -99,9 +103,11 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       edm::EDGetTokenT<reco::TrackCollection> token_tracks;
       edm::EDGetTokenT<edm::View<reco::Track> > token_edmViewTracks;
       edm::EDGetTokenT<reco::VertexCollection> token_vertices;
+      edm::EDGetTokenT<reco::VertexCollection> token_vertices_unfiltered;
 //    edm::EDGetTokenT<std::vector< PileupSummaryInfo > > token_genPU;   
       edm::EDGetTokenT< std::vector< TrackingVertex> >token_TrackingVtx;
       edm::EDGetTokenT< std::vector< TrackingParticle> >token_TrackingParticle;
+      edm::EDGetTokenT<pat::MuonCollection> tok_muoncol_; 
 
       //trking particle association maps
       edm::EDGetTokenT<reco::RecoToSimCollection> associatorMapRTS_;
@@ -118,6 +124,7 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       bool isMC_;
 
       uint nVertices;
+      uint nVertices_unfiltered;
       uint nTracks[NMAXVTX];
       uint nTracks_ptGT0p3EtaLT2p4[NMAXVTX];
 
@@ -140,6 +147,9 @@ class IsoVertexIDTreeAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedReso
       float trackPtVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackEtaVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackPhiVtx[NMAXVTX][NMAXTRACKSVTX];
+
+      float muonPtVtx[NMAXVTX][NMAXMUONSVTX];
+
       float trackPtErrVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackXVtx[NMAXVTX][NMAXTRACKSVTX];
       float trackYVtx[NMAXVTX][NMAXTRACKSVTX];
@@ -184,7 +194,9 @@ isMC_(iConfig.getParameter<bool>("isMC"))
    usesResource("TFileService");
 
    token_vertices = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("VertexCollection"));
+   token_vertices_unfiltered = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("UnfilteredVertexCollection"));
    token_tracks = consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("TrackCollection"));
+   tok_muoncol_ = consumes<pat::MuonCollection>(edm::InputTag(iConfig.getUntrackedParameter<edm::InputTag>("MuonCollection")));
 
    edm::InputTag TrackingVertexSrc_("mix","MergedTrackTruth");
    edm::InputTag TrackingParticleSrc_("mix","MergedTrackTruth");
@@ -222,19 +234,32 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
    resetArrays();
 
    using namespace edm;
+   
+   runNb = iEvent.id().run();
+   eventNb = iEvent.id().event();
+   lsNb = iEvent.luminosityBlock();
 
+   edm::Handle< reco::VertexCollection > vertices_unfiltered;
+   iEvent.getByToken(token_vertices_unfiltered, vertices_unfiltered);
+   if(!vertices_unfiltered->size()) { 
+     std::cout<<"Invalid or empty vertex collection!" << vertices_unfiltered->size() <<std::endl; 
+     vertexTree->Fill(); 
+     return; 
+   }
+   nVertices_unfiltered = vertices_unfiltered->size();
+   
    edm::Handle< reco::VertexCollection > vertices;
    iEvent.getByToken(token_vertices, vertices);
-   if(!vertices->size()) { std::cout<<"Invalid or empty vertex collection!"<<std::endl; vertexTree->Fill(); return; }
+   if(!vertices->size()) { std::cout<<"Invalid or empty filtered vertex collection!" << vertices->size() <<std::endl; vertexTree->Fill(); return; }
 
    edm::Handle< reco::TrackCollection > tracks;
    iEvent.getByToken(token_tracks, tracks);
    if(!tracks->size()) { std::cout<<"Invalid or empty track collection!"<<std::endl; return; }
 
-   runNb = iEvent.id().run();
-   eventNb = iEvent.id().event();
-   lsNb = iEvent.luminosityBlock();
- 
+   edm::Handle< pat::MuonCollection > muoncol;
+   iEvent.getByToken(tok_muoncol_, muoncol);
+   if(!muoncol->size()) { std::cout << "Invalid muon collection "  << std::endl; return;}
+
    //get the tracking Vertex info (truth for tracking purposes)
    if(isMC_){
      edm::Handle< std::vector< TrackingVertex > > trkVtx;
@@ -355,7 +380,8 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
        zVtxErr[nVertices] = vtx.zError();
        chi2Vtx[nVertices] = vtx.chi2();
        ndofVtx[nVertices] = vtx.ndof();
-      
+
+       //second loop to calculate z separations
        for(unsigned int iv2=0; iv2<vertices->size(); iv2++)
        {
          if(iv==iv2) continue;
@@ -393,6 +419,22 @@ IsoVertexIDTreeAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup
           trackZErrVtx[nVertices][nTracksTmp] = track->dzError();
           trackHPVtx[nVertices][nTracksTmp] = track->quality(reco::TrackBase::highPurity);
 //std::cout<<nVertices<<" "<<zVtx[nVertices]<<" "<<nTracksTmp<<" "<<trackPtVtx[nVertices][nTracksTmp]<<" "<<trackZVtx[nVertices][nTracksTmp]<<std::endl;
+
+          //check for any muons
+          unsigned int candSize_mu = muoncol->size();
+          unsigned int nMu = 0;
+          for(uint it=0; it<candSize_mu; ++it)
+          {
+            const auto& muon = (*muoncol)[it];
+            //std::cout << muon.pt() << " " << track->pt() << " " << muon.innerTrack() << " " << track << std::endl;
+            if( muon.innerTrack().isNull() || (muon.innerTrack()->pt() != track->pt()) ) continue; 
+            muonPtVtx[nVertices][nMu] = muon.pt();
+            nMu++;
+            if(nMu>NMAXMUONSVTX){
+              std::cout << "more than 10 muons for this vtx, breaking!" << std::endl;
+              break;
+            }
+          }
 
           if(isMC_){
             int eventNumber = -1;
@@ -459,6 +501,9 @@ std::cout<<"After: "<<i<<" "<<zVtx[i]<<" "<<j<<" "<<trackPtVtx[i][j]<<" "<<track
 void
 IsoVertexIDTreeAnalyzer::resetArrays()
 {
+  nVertices_unfiltered = 0;
+  nVertices = 0;
+
   for(int i=0;i<NMAXVTX;i++)
   {
     xVtx[i] = -999.0;
@@ -496,6 +541,10 @@ IsoVertexIDTreeAnalyzer::resetArrays()
       trackHPVtx[i][j] = -999.0;
       if(isMC_) trackGenVertex[i][j] = -1;
     }
+    for(int j=0;j<NMAXMUONSVTX;j++)
+    {
+      muonPtVtx[i][j] = -999.0;
+    }
   }
   if(isMC_){
     nVertices_gen = -999;
@@ -517,6 +566,7 @@ IsoVertexIDTreeAnalyzer::beginJob()
   vertexTree->Branch("LSNb",&lsNb,"LSNb/i");
   vertexTree->Branch("EventNb",&eventNb,"EventNb/i");
   vertexTree->Branch("nVertices",&nVertices,"nVertices/i");
+  vertexTree->Branch("nVertices_unfiltered",&nVertices_unfiltered,"nVertices_unfiltered/i");
   vertexTree->Branch("xVtx",xVtx,"xVtx[nVertices]/F");
   vertexTree->Branch("yVtx",yVtx,"yVtx[nVertices]/F");
   vertexTree->Branch("zVtx",zVtx,"zVtx[nVertices]/F");
@@ -525,6 +575,7 @@ IsoVertexIDTreeAnalyzer::beginJob()
   vertexTree->Branch("trackPtVtx",trackPtVtx,"trackPtVtx[nVertices][300]/F");
   vertexTree->Branch("trackEtaVtx",trackEtaVtx,"trackEtaVtx[nVertices][300]/F");
   vertexTree->Branch("trackPhiVtx",trackPhiVtx,"trackPhiVtx[nVertices][300]/F");
+  vertexTree->Branch("muonPtVtx",muonPtVtx,"muonPtVtx[nVertices][10]/F");
   vertexTree->Branch("minZSepReco",minZSepReco,"minZSepReco[nVertices]/F");
 
   if(!isSlim_)
